@@ -1,1 +1,1 @@
-# Crisis-Management
+# ReliefSync AI is an AI-powered humanitarian crisis management platform that enhances disaster response and emergency coordination worldwide. With real-time monitoring, live maps, and AI-driven analysis, it identifies urgent needs, optimizes relief strategies, and supports governments, NGOs, and agencies in making faster, smarter, data-driven decisions.
