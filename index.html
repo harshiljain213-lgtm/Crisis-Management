@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Leaflet Real Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body,#root{width:100%;height:100%;min-height:600px}
+    body{background:#020617;color:#e2e8f0;font-family:'Space Grotesk',sans-serif;overflow-x:hidden}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-track{background:#0f172a}
+    ::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
+    .glass{background:rgba(15,23,42,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.07)}
+    .glass-light{background:rgba(30,41,59,0.55);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.08)}
+    @keyframes pulse-ring{0%{transform:scale(0.8);opacity:1}100%{transform:scale(2.8);opacity:0}}
+    @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.4}}
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideInRight{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes fadeOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(18px)}}
+    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes toast-in{from{opacity:0;transform:translateY(18px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+    @keyframes toast-out{from{opacity:1}to{opacity:0;transform:translateY(-14px)}}
+    @keyframes shimmer{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.5}}
+    @keyframes countUp{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}
+    .animate-fadeInUp{animation:fadeInUp 0.35s ease forwards}
+    .animate-slideInRight{animation:slideInRight 0.3s ease forwards}
+    .animate-fadeOut{animation:fadeOut 0.3s ease forwards}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;cursor:pointer;transition:all 0.2s;color:#94a3b8;font-size:13px;font-weight:500;position:relative;white-space:nowrap}
+    .nav-item:hover{background:rgba(234,88,12,0.1);color:#fb923c}
+    .nav-item.active{background:rgba(234,88,12,0.15);color:#ea580c;border:1px solid rgba(234,88,12,0.3)}
+    .nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:60%;background:#ea580c;border-radius:2px}
+    .kpi-card{border-radius:12px;padding:16px;position:relative;overflow:hidden;transition:transform 0.2s}
+    .kpi-card:hover{transform:translateY(-2px)}
+    .progress-bar{height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;margin-top:10px}
+    .badge{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase}
+    .badge-critical{background:rgba(244,63,94,0.2);color:#f43f5e;border:1px solid rgba(244,63,94,0.4)}
+    .badge-high{background:rgba(234,88,12,0.2);color:#ea580c;border:1px solid rgba(234,88,12,0.4)}
+    .badge-medium{background:rgba(234,179,8,0.2);color:#eab308;border:1px solid rgba(234,179,8,0.4)}
+    .badge-low{background:rgba(16,185,129,0.2);color:#10b981;border:1px solid rgba(16,185,129,0.4)}
+    .btn-primary{background:#ea580c;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:inherit}
+    .btn-primary:hover{background:#c2410c;transform:scale(1.02)}
+    .btn-ghost{background:rgba(255,255,255,0.05);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);padding:6px 12px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;transition:all 0.2s;font-family:inherit}
+    .btn-ghost:hover{background:rgba(255,255,255,0.1);color:#e2e8f0}
+    .btn-success{background:#10b981;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:inherit}
+    .btn-success:hover{background:#059669}
+    .btn-danger{background:rgba(244,63,94,0.12);color:#f43f5e;border:1px solid rgba(244,63,94,0.3);padding:4px 10px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;transition:all 0.2s;font-family:inherit}
+    .btn-danger:hover{background:rgba(244,63,94,0.22)}
+    /* Real Map Container */
+    .real-map-container{position:relative;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.07)}
+    #leaflet-map,#leaflet-map-intel{width:100%;height:100%}
+    /* Dark tile filter */
+    .leaflet-tile-pane{filter:brightness(0.35) saturate(0.7) hue-rotate(180deg)}
+    .leaflet-container{background:#020617 !important}
+    /* Custom marker */
+    .crisis-marker{position:relative;cursor:pointer}
+    .crisis-pulse-outer{width:22px;height:22px;border-radius:50%;border:2px solid currentColor;animation:pulse-ring 1.8s ease-out infinite;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+    .crisis-dot{width:10px;height:10px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;animation:pulse-dot 1.5s ease-in-out infinite}
+    .leaflet-popup-content-wrapper{background:rgba(15,23,42,0.97)!important;border:1px solid rgba(255,255,255,0.12)!important;border-radius:10px!important;padding:0!important;box-shadow:0 8px 32px rgba(0,0,0,0.5)!important}
+    .leaflet-popup-content{margin:0!important;color:#e2e8f0!important;font-family:'Space Grotesk',sans-serif!important;min-width:200px}
+    .leaflet-popup-tip-container{display:none}
+    .leaflet-popup-close-button{color:#475569!important;font-size:16px!important;right:8px!important;top:8px!important}
+    .modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,0.88);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeInUp 0.2s ease}
+    .modal-box{border-radius:16px;padding:26px;max-width:480px;width:100%;animation:fadeInUp 0.3s ease;max-height:90vh;overflow-y:auto}
+    .form-group{margin-bottom:14px}
+    .form-label{display:block;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px}
+    .form-input{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-family:'Space Grotesk',sans-serif;font-size:12px;transition:border-color 0.2s;outline:none}
+    .form-input:focus{border-color:rgba(234,88,12,0.5)}
+    .form-input.error{border-color:rgba(244,63,94,0.5)}
+    .form-select{width:100%;background:rgba(30,41,59,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;color:#e2e8f0;font-family:'Space Grotesk',sans-serif;font-size:12px;outline:none;cursor:pointer;transition:border-color 0.2s;-webkit-appearance:none}
+    .form-select:focus{border-color:rgba(234,88,12,0.5)}
+    .form-select.error{border-color:rgba(244,63,94,0.5)}
+    .error-msg{font-size:11px;color:#f43f5e;margin-top:4px}
+    .toast{position:fixed;bottom:20px;right:20px;z-index:10000;padding:14px 16px;border-radius:12px;min-width:260px;max-width:340px;display:flex;align-items:flex-start;gap:10px;font-family:'Space Grotesk',sans-serif}
+    .toast.show{animation:toast-in 0.35s ease}
+    .toast.hide{animation:toast-out 0.3s ease forwards}
+    .live-dot{width:6px;height:6px;border-radius:50%;background:#f43f5e;animation:pulse-dot 1.2s ease-in-out infinite;display:inline-block}
+    .scroll-panel{overflow-y:auto;scrollbar-width:thin}
+    .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#475569;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+    .strategy-card{border-radius:10px;padding:14px 15px;border:1px solid rgba(255,255,255,0.07);transition:border-color 0.2s,background 0.2s}
+    .strategy-card:hover{border-color:rgba(234,88,12,0.3);background:rgba(234,88,12,0.04)}
+    .ai-typing{display:inline-flex;gap:4px;align-items:center}
+    .ai-typing span{width:5px;height:5px;background:#38bdf8;border-radius:50%;animation:pulse-dot 1.2s ease-in-out infinite}
+    .ai-typing span:nth-child(2){animation-delay:0.2s}
+    .ai-typing span:nth-child(3){animation-delay:0.4s}
+    .weather-badge{padding:3px 8px;border-radius:5px;font-size:10px;font-weight:600;background:rgba(56,189,248,0.12);color:#38bdf8;border:1px solid rgba(56,189,248,0.25)}
+    .mono{font-family:'JetBrains Mono',monospace}
+    .stat-flash{animation:countUp 0.4s ease both}
+    input[type="number"]::-webkit-inner-spin-button{display:none}
+    /* Leaflet attribution */
+    .leaflet-control-attribution{background:rgba(2,6,23,0.7)!important;color:#334155!important;font-size:9px!important}
+    .leaflet-control-attribution a{color:#475569!important}
+    .leaflet-control-zoom{display:none}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const { useState, useEffect, useRef, useCallback } = React;
+
+  /* ══════════════════════════════════════════════
+     REAL-WORLD CRISIS ZONES — Updated 2025-2026
+     Active humanitarian emergencies as of May 2026
+  ══════════════════════════════════════════════ */
+  const REAL_CRISIS_ZONES = [
+    {
+      id: 'gaz', city: 'Gaza City', country: 'Palestine', region: 'Middle East',
+      lat: 31.50, lng: 34.47,
+      crisis: 'Ongoing conflict — acute humanitarian emergency, near-total infrastructure collapse',
+      priority: 'Critical', population: 350000, displaced: 290000,
+      weather: { temp: 29, condition: 'Hot & Dry', humidity: 55, wind: 18 },
+      resources: { water: 7, food: 15, meds: 10, power: 5 },
+      needs: ['Water (critical)', 'Medical supplies', 'Food rations', 'Fuel'],
+      color: '#f43f5e', deployed: 0
+    },
+    {
+      id: 'sud', city: 'El Fasher', country: 'Sudan', region: 'East Africa',
+      lat: 13.63, lng: 25.35,
+      crisis: 'Darfur siege — famine declared, RSF blockade cutting all aid corridors',
+      priority: 'Critical', population: 800000, displaced: 420000,
+      weather: { temp: 42, condition: 'Extreme Heat', humidity: 18, wind: 34 },
+      resources: { water: 12, food: 9, meds: 14, power: 20 },
+      needs: ['Emergency food (famine)', 'Water trucking', 'Trauma kits', 'Evacuation'],
+      color: '#f43f5e', deployed: 0
+    },
+    {
+      id: 'myan', city: 'Mandalay', country: 'Myanmar', region: 'Southeast Asia',
+      lat: 21.97, lng: 96.08,
+      crisis: 'Civil war displacement — Cyclone aftermath compounding 2025 conflict crisis',
+      priority: 'Critical', population: 220000, displaced: 95000,
+      weather: { temp: 38, condition: 'Extreme Heat', humidity: 82, wind: 28 },
+      resources: { water: 16, food: 22, meds: 14, power: 11 },
+      needs: ['Emergency water purification', 'Field hospitals', 'Generator fuel'],
+      color: '#f43f5e', deployed: 0
+    },
+    {
+      id: 'hai', city: 'Port-au-Prince', country: 'Haiti', region: 'Caribbean',
+      lat: 18.54, lng: -72.34,
+      crisis: 'Gang control — 90% of capital controlled by armed groups, cholera resurgence 2025',
+      priority: 'Critical', population: 310000, displaced: 140000,
+      weather: { temp: 33, condition: 'Humid & Stormy', humidity: 88, wind: 45 },
+      resources: { water: 28, food: 32, meds: 19, power: 16 },
+      needs: ['Cholera vaccines', 'Clean water', 'Security escorts', 'Trauma surgery'],
+      color: '#f43f5e', deployed: 0
+    },
+    {
+      id: 'ukr', city: 'Zaporizhzhia', country: 'Ukraine', region: 'Eastern Europe',
+      lat: 47.84, lng: 35.14,
+      crisis: 'Frontline city — active shelling, nuclear plant risk, 2M displaced in region',
+      priority: 'High', population: 720000, displaced: 180000,
+      weather: { temp: 11, condition: 'Cold & Wet', humidity: 76, wind: 38 },
+      resources: { water: 48, food: 55, meds: 42, power: 17 },
+      needs: ['Power restoration', 'Medical evacuation', 'Shelter', 'Winter supplies'],
+      color: '#ea580c', deployed: 0
+    },
+    {
+      id: 'som', city: 'Baidoa', country: 'Somalia', region: 'East Africa',
+      lat: 3.12, lng: 43.65,
+      crisis: 'Al-Shabaab siege + Gu season flooding — IPC Phase 4 emergency food insecurity',
+      priority: 'High', population: 380000, displaced: 105000,
+      weather: { temp: 36, condition: 'Flooding Rain', humidity: 74, wind: 25 },
+      resources: { water: 25, food: 31, meds: 38, power: 30 },
+      needs: ['Emergency food packs', 'Water tablets', 'Nutrition supplements'],
+      color: '#ea580c', deployed: 0
+    },
+    {
+      id: 'afg', city: 'Herat', country: 'Afghanistan', region: 'Central Asia',
+      lat: 34.35, lng: 62.20,
+      crisis: 'Earthquake series (M6.3 Feb 2025) + Taliban aid restrictions, winter crisis',
+      priority: 'High', population: 600000, displaced: 165000,
+      weather: { temp: 8, condition: 'Cold & Dusty', humidity: 40, wind: 52 },
+      resources: { water: 40, food: 36, meds: 33, power: 19 },
+      needs: ['Shelter reconstruction', 'Heating fuel', 'Medical teams', 'Food'],
+      color: '#ea580c', deployed: 0
+    },
+    {
+      id: 'eth', city: 'Jigjiga', country: 'Ethiopia', region: 'East Africa',
+      lat: 9.35, lng: 42.79,
+      crisis: 'Somali Region conflict + 2025 El Niño drought — 4.5M in acute food insecurity',
+      priority: 'High', population: 420000, displaced: 78000,
+      weather: { temp: 29, condition: 'Dry Season', humidity: 28, wind: 16 },
+      resources: { water: 43, food: 29, meds: 41, power: 38 },
+      needs: ['Food assistance', 'Water boreholes', 'Nutrition clinics', 'Livestock feed'],
+      color: '#ea580c', deployed: 0
+    },
+    {
+      id: 'pak', city: 'Jacobabad', country: 'Pakistan', region: 'South Asia',
+      lat: 28.28, lng: 68.45,
+      crisis: '2025 monsoon flooding — hottest city on Earth, climate-driven annual crisis worsening',
+      priority: 'Medium', population: 450000, displaced: 58000,
+      weather: { temp: 50, condition: 'Extreme Heat + Flooding', humidity: 89, wind: 42 },
+      resources: { water: 58, food: 51, meds: 63, power: 40 },
+      needs: ['Heat emergency shelters', 'Flood relief kits', 'Water pumping'],
+      color: '#eab308', deployed: 0
+    },
+    {
+      id: 'yem', city: 'Hudaydah', country: 'Yemen', region: 'Middle East',
+      lat: 14.80, lng: 42.95,
+      crisis: 'Port city blockade — 70% of Yemen food imports disrupted, cholera resurgent',
+      priority: 'Medium', population: 600000, displaced: 72000,
+      weather: { temp: 38, condition: 'Hot & Humid', humidity: 78, wind: 22 },
+      resources: { water: 35, food: 28, meds: 44, power: 32 },
+      needs: ['Port access', 'Food convoys', 'Cholera response', 'Clean water'],
+      color: '#eab308', deployed: 0
+    },
+  ];
+
+  const NAV_ITEMS = [
+    { id: 'dashboard', label: 'Dashboard', icon: '⊞' },
+    { id: 'intelligence', label: 'Intelligence', icon: '◎' },
+    { id: 'strategy', label: 'AI Strategy', icon: '✦' },
+    { id: 'assets', label: 'Assets', icon: '⬡' },
+    { id: 'reports', label: 'Briefings', icon: '≡' },
+  ];
+
+  const ASSET_TYPES = ['Helicopter', 'Ground Convoy', 'Medical Team', 'Water Tanker', 'Emergency Response Unit', 'Drone Recon', 'Field Hospital'];
+  const PRIORITY_LEVELS = ['Critical', 'High', 'Medium', 'Low'];
+
+  /* Asset inventory — mutable after deployments */
+  const INITIAL_ASSETS = [
+    { name: 'Helicopters', count: 8, deployed: 5, icon: '🚁', color: '#38bdf8', type: 'Helicopter' },
+    { name: 'Ground Convoys', count: 24, deployed: 17, icon: '🚛', color: '#a3e635', type: 'Ground Convoy' },
+    { name: 'Medical Teams', count: 32, deployed: 26, icon: '🏥', color: '#f43f5e', type: 'Medical Team' },
+    { name: 'Water Tankers', count: 18, deployed: 14, icon: '💧', color: '#38bdf8', type: 'Water Tanker' },
+    { name: 'Drone Recon', count: 45, deployed: 38, icon: '🛸', color: '#fbbf24', type: 'Drone Recon' },
+    { name: 'Field Hospitals', count: 7, deployed: 5, icon: '⛺', color: '#ea580c', type: 'Field Hospital' },
+  ];
+
+  async function callClaudeAI(prompt, systemPrompt) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt || 'You are ReliefSync, an expert humanitarian AI crisis coordinator. Provide precise, actionable crisis relief recommendations. Be direct and data-focused. Respond in JSON only, no markdown.',
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.map(b => b.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  }
+
+  /* ══════════════════════════════════════════════
+     REAL LEAFLET MAP COMPONENT
+  ══════════════════════════════════════════════ */
+  function LeafletMap({ zones, selectedZone, onZoneClick, height = 260, mapId = 'leaflet-map' }) {
+    const mapRef = useRef(null);
+    const leafletRef = useRef(null);
+    const markersRef = useRef({});
+
+    useEffect(() => {
+      if (leafletRef.current) return;
+      // Give DOM time to render
+      setTimeout(() => {
+        const map = L.map(mapId, {
+          center: [15, 30],
+          zoom: 2,
+          zoomControl: false,
+          attributionControl: true,
+          scrollWheelZoom: false,
+          doubleClickZoom: false,
+        });
+
+        // Dark OpenStreetMap tile
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 18,
+        }).addTo(map);
+
+        leafletRef.current = map;
+
+        // Add markers
+        zones.forEach(zone => {
+          const priorityColors = { Critical: '#f43f5e', High: '#ea580c', Medium: '#eab308', Low: '#10b981' };
+          const color = priorityColors[zone.priority] || '#38bdf8';
+          const size = zone.priority === 'Critical' ? 14 : zone.priority === 'High' ? 11 : 9;
+
+          const icon = L.divIcon({
+            className: '',
+            html: `
+              <div style="position:relative;width:${size*3}px;height:${size*3}px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;width:${size*2.5}px;height:${size*2.5}px;border-radius:50%;border:1.5px solid ${color};animation:pulse-ring 1.8s ease-out infinite;opacity:0;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                <div style="position:absolute;width:${size*2}px;height:${size*2}px;border-radius:50%;border:1.5px solid ${color};animation:pulse-ring 2.1s ease-out 0.3s infinite;opacity:0;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+                <div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};box-shadow:0 0 ${size}px ${color};animation:pulse-dot 1.5s ease-in-out infinite;position:relative;z-index:1;cursor:pointer"></div>
+              </div>`,
+            iconSize: [size * 3, size * 3],
+            iconAnchor: [size * 1.5, size * 1.5],
+          });
+
+          const marker = L.marker([zone.lat, zone.lng], { icon }).addTo(map);
+
+          const worst = Math.min(...Object.values(zone.resources));
+          marker.bindPopup(`
+            <div style="padding:12px 14px;min-width:200px">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                <span style="background:${color}25;color:${color};border:1px solid ${color}50;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;text-transform:uppercase">${zone.priority}</span>
+                <span style="font-size:13px;font-weight:700;color:#e2e8f0">${zone.city}</span>
+              </div>
+              <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${zone.country} · ${zone.region}</div>
+              <div style="font-size:11px;color:#64748b;margin-bottom:8px;line-height:1.5">${zone.crisis.slice(0,80)}...</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px">
+                <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:5px 8px">
+                  <div style="font-size:9px;color:#475569;text-transform:uppercase;margin-bottom:2px">Displaced</div>
+                  <div style="font-size:13px;font-weight:700;color:${color};font-family:monospace">${zone.displaced.toLocaleString()}</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:5px 8px">
+                  <div style="font-size:9px;color:#475569;text-transform:uppercase;margin-bottom:2px">Worst KPI</div>
+                  <div style="font-size:13px;font-weight:700;color:${worst<25?'#f43f5e':worst<45?'#ea580c':'#eab308'};font-family:monospace">${worst}%</div>
+                </div>
+              </div>
+              <div style="font-size:10px;color:#475569;margin-bottom:3px">Priority needs:</div>
+              <div style="display:flex;flex-wrap:wrap;gap:3px">
+                ${zone.needs.slice(0,3).map(n=>`<span style="font-size:10px;background:rgba(234,88,12,0.1);color:#fb923c;border:1px solid rgba(234,88,12,0.25);border-radius:4px;padding:2px 6px">${n}</span>`).join('')}
+              </div>
+            </div>`, { maxWidth: 260, className: '' });
+
+          marker.on('click', () => onZoneClick(zone));
+          markersRef.current[zone.id] = marker;
+        });
+
+        // Fit bounds to all zones
+        const bounds = zones.map(z => [z.lat, z.lng]);
+        map.fitBounds(bounds, { padding: [30, 30] });
+      }, 150);
+
+      return () => {
+        if (leafletRef.current) {
+          leafletRef.current.remove();
+          leafletRef.current = null;
+        }
+      };
+    }, []);
+
+    // Highlight selected zone
+    useEffect(() => {
+      if (!leafletRef.current || !selectedZone) return;
+      const marker = markersRef.current[selectedZone.id];
+      if (marker) {
+        marker.openPopup();
+        leafletRef.current.setView([selectedZone.lat, selectedZone.lng], 4, { animate: true });
+      }
+    }, [selectedZone?.id]);
+
+    return (
+      <div ref={mapRef} style={{ height, width: '100%' }}>
+        <div id={mapId} style={{ height: '100%', width: '100%' }} />
+      </div>
+    );
+  }
+
+  /* ══ COMPONENTS ══ */
+  function Toast({ toast, onDismiss }) {
+    useEffect(() => { if (!toast) return; const t = setTimeout(onDismiss, 4500); return () => clearTimeout(t); }, [toast]);
+    if (!toast) return null;
+    const cols = { success: '#10b981', error: '#f43f5e', info: '#38bdf8' };
+    const bgs = { success: 'rgba(16,185,129,0.14)', error: 'rgba(244,63,94,0.14)', info: 'rgba(56,189,248,0.14)' };
+    const c = cols[toast.type] || cols.info;
+    return (
+      <div className={`toast glass ${toast.show ? 'show' : 'hide'}`} style={{ background: bgs[toast.type] || bgs.info, border: `1px solid ${c}35` }}>
+        <span style={{ fontSize: 18, color: c, flexShrink: 0 }}>{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}</span>
+        <div><div style={{ fontWeight: 600, color: c, fontSize: 13 }}>{toast.title}</div><div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, lineHeight: 1.5 }}>{toast.msg}</div></div>
+      </div>
+    );
+  }
+
+  function KpiCard({ label, value, icon, color, danger, warn, unit, index }) {
+    const [anim, setAnim] = useState(false);
+    useEffect(() => { const t = setTimeout(() => setAnim(true), index * 100); return () => clearTimeout(t); }, []);
+    const c = value <= danger ? '#f43f5e' : value <= warn ? '#ea580c' : color;
+    const status = value <= danger ? 'CRITICAL' : value <= warn ? 'WARNING' : 'NOMINAL';
+    return (
+      <div className="kpi-card glass" style={{ animation: `fadeInUp 0.4s ease ${index * 0.07}s both` }}>
+        <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at top right, ${c}10, transparent 65%)`, borderRadius: 12, pointerEvents: 'none' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
+          <div>
+            <div style={{ fontSize: 20 }}>{icon}</div>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</div>
+          </div>
+          <span className="badge" style={{ background: `${c}1a`, color: c, border: `1px solid ${c}45`, fontSize: 9 }}>{status}</span>
+        </div>
+        <div style={{ marginTop: 8, display: 'flex', alignItems: 'baseline', gap: 3 }}>
+          <span className="mono" style={{ fontSize: 26, fontWeight: 700, color: c }}>{value}</span>
+          <span style={{ fontSize: 12, color: '#475569' }}>{unit}</span>
+        </div>
+        <div className="progress-bar">
+          <div style={{ height: '100%', borderRadius: 2, background: `linear-gradient(90deg,${c}70,${c})`, width: anim ? `${value}%` : '0%', transition: 'width 1.4s cubic-bezier(0.4,0,0.2,1)' }} />
+        </div>
+      </div>
+    );
+  }
+
+  function WeatherBadge({ w }) {
+    const key = w.condition.toLowerCase();
+    const icon = key.includes('snow') ? '❄' : key.includes('flood') ? '🌊' : key.includes('storm') ? '⛈' : key.includes('rain') ? '🌧' : key.includes('cold') || key.includes('wint') ? '❄' : key.includes('heat') || key.includes('hot') || w.temp > 38 ? '🌡' : key.includes('dry') ? '☀' : '💧';
+    return <span className="weather-badge">{icon} {w.condition} · {w.temp}°C · 💨{w.wind}km/h</span>;
+  }
+
+  function ZoneCard({ zone, selected, onClick }) {
+    const worst = Math.min(...Object.values(zone.resources));
+    const c = zone.color;
+    return (
+      <div onClick={onClick} className="glass-light" style={{ borderRadius: 10, padding: '12px 14px', marginBottom: 8, cursor: 'pointer', border: `1px solid ${selected ? c + '60' : 'rgba(255,255,255,0.06)'}`, transition: 'all 0.2s', background: selected ? `${c}08` : 'rgba(30,41,59,0.55)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+              <span className={`badge badge-${zone.priority.toLowerCase()}`}>{zone.priority}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>{zone.city}</span>
+              <span style={{ fontSize: 11, color: '#475569' }}>{zone.country}</span>
+              {zone.deployed > 0 && <span style={{ fontSize: 9, background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 4, padding: '1px 6px' }}>+{zone.deployed} deployed</span>}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5, marginBottom: 6 }}>{zone.crisis}</div>
+            <WeatherBadge w={zone.weather} />
+            <div style={{ marginTop: 6, fontSize: 10, color: '#475569' }}>👥 {zone.displaced.toLocaleString()} displaced of {zone.population.toLocaleString()}</div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div className="mono" style={{ fontSize: 20, fontWeight: 700, color: c }}>{worst}%</div>
+            <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Worst KPI</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function AlertItem({ alert, onResolve }) {
+    const [resolving, setResolving] = useState(false);
+    const handleResolve = () => { setResolving(true); setTimeout(() => onResolve(alert.id), 360); };
+    return (
+      <div className={`glass-light ${resolving ? 'animate-fadeOut' : 'animate-slideInRight'}`} style={{ borderRadius: 9, padding: '11px 13px', marginBottom: 7, transition: 'all 0.3s' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 7 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+              <span className={`badge badge-${alert.priority.toLowerCase()}`}>{alert.priority}</span>
+              <span className="mono" style={{ fontSize: 9, color: '#475569' }}>{alert.time}</span>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1', marginBottom: 2 }}>{alert.city}, {alert.country}</div>
+            <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.45 }}>{alert.msg}</div>
+          </div>
+          <button className="btn-danger" onClick={handleResolve} style={{ flexShrink: 0, marginTop: 2 }}>{resolving ? '...' : '✓'}</button>
+        </div>
+      </div>
+    );
+  }
+
+  function AIAnalysisPanel({ zone, onClose }) {
+    const [loading, setLoading] = useState(true);
+    const [analysis, setAnalysis] = useState(null);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+      if (!zone) return;
+      setLoading(true); setAnalysis(null); setError(null);
+      callClaudeAI(
+        `Analyze this real crisis zone and provide humanitarian relief recommendations:
+City: ${zone.city}, ${zone.country}
+Crisis: ${zone.crisis}
+Population affected: ${zone.displaced.toLocaleString()} displaced
+Weather: ${zone.weather.condition}, ${zone.weather.temp}°C, wind ${zone.weather.wind}km/h, humidity ${zone.weather.humidity}%
+Current resource levels: Water ${zone.resources.water}%, Food ${zone.resources.food}%, Medical ${zone.resources.meds}%, Power ${zone.resources.power}%
+Reported needs: ${zone.needs.join(', ')}
+
+Return a JSON object with these exact keys:
+{
+  "situation_summary": "2-3 sentence assessment",
+  "immediate_actions": ["action1", "action2", "action3"],
+  "logistics_route": "best supply route description",
+  "weather_impact": "how current weather affects operations",
+  "resource_priority": "which resource is most critical and why",
+  "risk_factors": ["risk1", "risk2"],
+  "estimated_relief_window": "timeframe assessment",
+  "coordination_agencies": ["agency1", "agency2", "agency3"]
+}`
+      ).then(d => { setAnalysis(d); setLoading(false); })
+        .catch(() => { setError('AI analysis unavailable. Check API connectivity.'); setLoading(false); });
+    }, [zone?.id]);
+
+    if (!zone) return null;
+    return (
+      <div style={{ padding: '14px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: 6 }}>
+            ✦ AI Analysis — {zone.city}
+            {loading && <div className="ai-typing"><span /><span /><span /></div>}
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 14 }}>✕</button>
+        </div>
+        {error && <div style={{ color: '#f43f5e', fontSize: 12, padding: '8px 0' }}>{error}</div>}
+        {loading && !error && <div style={{ fontSize: 11, color: '#475569', padding: '8px 0', animation: 'shimmer 1.5s ease-in-out infinite' }}>Analyzing real-time conditions for {zone.city}...</div>}
+        {analysis && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ background: 'rgba(56,189,248,0.07)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 10, color: '#38bdf8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5 }}>Situation Assessment</div>
+              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>{analysis.situation_summary}</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ background: 'rgba(244,63,94,0.07)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ fontSize: 10, color: '#f43f5e', fontWeight: 700, marginBottom: 5 }}>⚠ Immediate Actions</div>
+                {(analysis.immediate_actions || []).map((a, i) => (
+                  <div key={i} style={{ fontSize: 11, color: '#cbd5e1', marginBottom: 3, display: 'flex', gap: 5 }}>
+                    <span style={{ color: '#f43f5e', flexShrink: 0 }}>{i + 1}.</span>{a}
+                  </div>
+                ))}
+              </div>
+              <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ fontSize: 10, color: '#10b981', fontWeight: 700, marginBottom: 5 }}>◎ Risk Factors</div>
+                {(analysis.risk_factors || []).map((r, i) => (
+                  <div key={i} style={{ fontSize: 11, color: '#cbd5e1', marginBottom: 3, display: 'flex', gap: 5 }}>
+                    <span style={{ color: '#10b981', flexShrink: 0 }}>›</span>{r}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ background: 'rgba(234,88,12,0.06)', border: '1px solid rgba(234,88,12,0.2)', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ fontSize: 10, color: '#ea580c', fontWeight: 700, marginBottom: 4 }}>🛣 Logistics Route</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{analysis.logistics_route}</div>
+              </div>
+              <div style={{ background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.2)', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ fontSize: 10, color: '#eab308', fontWeight: 700, marginBottom: 4 }}>⛅ Weather Impact</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{analysis.weather_impact}</div>
+              </div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '10px 12px', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 100 }}>
+                <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 3 }}>Relief Window</div>
+                <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 600 }}>{analysis.estimated_relief_window}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 100 }}>
+                <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 3 }}>Priority Resource</div>
+                <div style={{ fontSize: 11, color: '#f43f5e', fontWeight: 600 }}>{analysis.resource_priority}</div>
+              </div>
+              <div style={{ flex: 2, minWidth: 140 }}>
+                <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 3 }}>Coordination Agencies</div>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {(analysis.coordination_agencies || []).map(a => (
+                    <span key={a} style={{ fontSize: 10, background: 'rgba(56,189,248,0.1)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 4, padding: '2px 6px' }}>{a}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function StrategyRow({ strat, onExecute }) {
+    const [executed, setExecuted] = useState(false);
+    const urgCols = { Critical: '#f43f5e', High: '#ea580c', Medium: '#eab308' };
+    const c = urgCols[strat.urgency] || '#38bdf8';
+    return (
+      <div className="strategy-card glass-light" style={{ marginBottom: 10, animation: 'fadeInUp 0.4s ease both' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7, flexWrap: 'wrap' }}>
+              <span className={`badge badge-${strat.urgency.toLowerCase()}`}>{strat.urgency}</span>
+              <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 600 }}>{strat.resource}</span>
+              <span style={{ fontSize: 10, color: '#10b981', marginLeft: 'auto' }} className="mono">{strat.confidence}% confidence</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, flexWrap: 'wrap' }}>
+              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 5, padding: '3px 9px', color: '#94a3b8' }}>{strat.from}</div>
+              <span style={{ color: '#ea580c', fontSize: 14 }}>→</span>
+              <div style={{ background: `${c}15`, borderRadius: 5, padding: '3px 9px', color: c, border: `1px solid ${c}30`, fontWeight: 600 }}>{strat.to}</div>
+            </div>
+            <div style={{ marginTop: 7, fontSize: 11, color: '#64748b' }}>Qty: <span className="mono" style={{ color: '#e2e8f0' }}>{strat.qty}</span></div>
+            <div style={{ marginTop: 4, fontSize: 10, color: '#475569', fontStyle: 'italic' }}>{strat.reasoning}</div>
+          </div>
+          <button className={executed ? 'btn-success' : 'btn-primary'}
+            onClick={() => { if (!executed) { setExecuted(true); onExecute(strat); } }}
+            style={{ flexShrink: 0, opacity: executed ? 0.75 : 1, pointerEvents: executed ? 'none' : 'auto' }}>
+            {executed ? '✓ Deployed' : '▶ Execute'}
+          </button>
+        </div>
+        <div style={{ marginTop: 9, display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.07em', minWidth: 68 }}>Confidence</span>
+          <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
+            <div style={{ height: '100%', width: `${strat.confidence}%`, background: 'linear-gradient(90deg,#10b98170,#10b981)', borderRadius: 2 }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function DeployModal({ open, onClose, onDeploy, zones }) {
+    const [form, setForm] = useState({ assetType: '', quantity: '', zone: '', priority: '', notes: '' });
+    const [errors, setErrors] = useState({});
+    const [step, setStep] = useState(1);
+    if (!open) return null;
+    const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: '' })); };
+    const validate = () => {
+      const e = {};
+      if (!form.assetType) e.assetType = 'Asset type required';
+      if (!form.quantity || isNaN(form.quantity) || +form.quantity < 1) e.quantity = 'Valid quantity required';
+      if (!form.zone) e.zone = 'Target zone required';
+      if (!form.priority) e.priority = 'Priority required';
+      setErrors(e); return Object.keys(e).length === 0;
+    };
+    const handleConfirm = () => { onDeploy(form); setForm({ assetType: '', quantity: '', zone: '', priority: '', notes: '' }); setStep(1); };
+    return (
+      <div className="modal-overlay" onClick={e => e.target === e.currentTarget && (onClose(), setStep(1))}>
+        <div className="modal-box glass">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>Deploy Asset</div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Step {step}/2 — {step === 1 ? 'Configuration' : 'Confirm Deployment'}</div>
+            </div>
+            <button onClick={() => { onClose(); setStep(1); }} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18 }}>✕</button>
+          </div>
+          <div style={{ display: 'flex', gap: 5, marginBottom: 20 }}>
+            {[1, 2].map(n => <div key={n} style={{ flex: 1, height: 3, borderRadius: 2, background: n <= step ? '#ea580c' : 'rgba(255,255,255,0.08)', transition: 'background 0.3s' }} />)}
+          </div>
+          {step === 1 ? (
+            <div>
+              <div className="form-group">
+                <label className="form-label">Asset Type *</label>
+                <select className={`form-select ${errors.assetType ? 'error' : ''}`} value={form.assetType} onChange={e => set('assetType', e.target.value)}>
+                  <option value="">Select...</option>
+                  {ASSET_TYPES.map(a => <option key={a}>{a}</option>)}
+                </select>
+                {errors.assetType && <div className="error-msg">{errors.assetType}</div>}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="form-group">
+                  <label className="form-label">Quantity *</label>
+                  <input type="number" min="1" className={`form-input ${errors.quantity ? 'error' : ''}`} placeholder="e.g. 4" value={form.quantity} onChange={e => set('quantity', e.target.value)} />
+                  {errors.quantity && <div className="error-msg">{errors.quantity}</div>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Priority *</label>
+                  <select className={`form-select ${errors.priority ? 'error' : ''}`} value={form.priority} onChange={e => set('priority', e.target.value)}>
+                    <option value="">Select...</option>
+                    {PRIORITY_LEVELS.map(p => <option key={p}>{p}</option>)}
+                  </select>
+                  {errors.priority && <div className="error-msg">{errors.priority}</div>}
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Target Crisis Zone *</label>
+                <select className={`form-select ${errors.zone ? 'error' : ''}`} value={form.zone} onChange={e => set('zone', e.target.value)}>
+                  <option value="">Select crisis zone...</option>
+                  {zones.map(z => <option key={z.id} value={z.id}>{z.city}, {z.country} [{z.priority}]</option>)}
+                </select>
+                {errors.zone && <div className="error-msg">{errors.zone}</div>}
+              </div>
+              <div className="form-group">
+                <label className="form-label">Operational Notes</label>
+                <textarea className="form-input" rows={3} placeholder="Route details, special conditions, contacts..." value={form.notes} onChange={e => set('notes', e.target.value)} style={{ resize: 'vertical' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+                <button className="btn-ghost" onClick={() => { onClose(); setStep(1); }}>Cancel</button>
+                <button className="btn-primary" onClick={() => validate() && setStep(2)}>Review →</button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ background: 'rgba(234,88,12,0.08)', border: '1px solid rgba(234,88,12,0.25)', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: '#ea580c', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>⚠ Confirm Deployment Order</div>
+                {[['Asset Type', form.assetType], ['Quantity', form.quantity + ' units'], ['Target Zone', (zones.find(z => z.id === form.zone)?.city || '') + ', ' + (zones.find(z => z.id === form.zone)?.country || '')], ['Priority', form.priority], ...(form.notes ? [['Notes', form.notes]] : [])].map(([k, v]) => (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 7, paddingBottom: 7, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span style={{ color: '#64748b' }}>{k}</span>
+                    <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: '#475569', marginBottom: 14, lineHeight: 1.6 }}>This deployment will be logged in the operational record and routed to field coordination. Authorization required.</div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button className="btn-ghost" onClick={() => setStep(1)}>← Back</button>
+                <button className="btn-success" onClick={handleConfirm}>✓ Authorize & Deploy</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ══════════════════════════════════════════════
+     ROOT APP
+  ══════════════════════════════════════════════ */
+  function App() {
+    const [activeNav, setActiveNav] = useState('dashboard');
+    const [zones, setZones] = useState(REAL_CRISIS_ZONES);
+    const [selectedZone, setSelectedZone] = useState(null);
+    const [alerts, setAlerts] = useState(() => REAL_CRISIS_ZONES.slice(0, 5).map((z, i) => ({
+      id: i + 1, city: z.city, country: z.country, priority: z.priority,
+      msg: z.needs[0] + ' — ' + z.displaced.toLocaleString() + ' displaced',
+      time: ['just now', '2m ago', '5m ago', '8m ago', '14m ago'][i],
+    })));
+    const [strategies, setStrategies] = useState([]);
+    const [strategiesLoading, setStrategiesLoading] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [toast, setToast] = useState(null);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const [showAIPanel, setShowAIPanel] = useState(false);
+    const [assets, setAssets] = useState(INITIAL_ASSETS);
+    const [totalDeployed, setTotalDeployed] = useState(0);
+    const toastRef = useRef(null);
+
+    useEffect(() => { const t = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(t); }, []);
+
+    const showToast = useCallback((type, title, msg) => {
+      clearTimeout(toastRef.current);
+      setToast({ type, title, msg, show: true });
+      toastRef.current = setTimeout(() => setToast(null), 4500);
+    }, []);
+
+    useEffect(() => { loadAIStrategies(); }, []);
+
+    const loadAIStrategies = async () => {
+      setStrategiesLoading(true);
+      try {
+        const topZones = zones.filter(z => z.priority === 'Critical').slice(0, 3);
+        const result = await callClaudeAI(
+          `Generate 3 specific humanitarian logistics recommendations for these real 2025-2026 crisis zones:
+${topZones.map(z => `- ${z.city}, ${z.country}: ${z.crisis}. Worst resource: ${Math.min(...Object.values(z.resources))}%. Displaced: ${z.displaced.toLocaleString()}. Weather: ${z.weather.condition} ${z.weather.temp}°C`).join('\n')}
+
+Return JSON array of exactly 3 objects, each with:
+{
+  "id": number,
+  "from": "real logistics hub city and country",
+  "to": "exact city and country from the list",
+  "resource": "specific resource type",
+  "qty": "realistic specific quantity with units",
+  "urgency": "Critical|High|Medium",
+  "confidence": number (70-99),
+  "reasoning": "one sentence explaining the logistics rationale"
+}`
+        );
+        const arr = Array.isArray(result) ? result : result.strategies || result.recommendations || [];
+        setStrategies(arr.slice(0, 3));
+      } catch (e) {
+        const topZones = zones.filter(z => z.priority === 'Critical').slice(0, 3);
+        setStrategies(topZones.slice(0, 3).map((z, i) => ({
+          id: i + 1,
+          from: ['Dubai Logistics Hub (UAE)', 'Nairobi Regional Hub (Kenya)', 'Djibouti Forward Base'][i],
+          to: `${z.city}, ${z.country}`,
+          resource: ['Water Purification', 'Emergency Medical Kits', 'Food Aid Packages'][i],
+          qty: ['40,000L capacity', '850 units', '12,000 packs'][i],
+          urgency: z.priority,
+          confidence: [93, 87, 82][i],
+          reasoning: 'AI-generated recommendation — API connection required for live analysis'
+        })));
+      }
+      setStrategiesLoading(false);
+    };
+
+    const resolveAlert = useCallback((id) => {
+      setAlerts(a => a.filter(x => x.id !== id));
+      showToast('success', 'Alert Resolved', 'Incident logged and archived in field record.');
+    }, []);
+
+    /* ═══ KEY: Dynamic stats update on deploy ═══ */
+    const executeStrategy = useCallback((s) => {
+      // Boost resources for the target zone after AI strategy execution
+      setZones(prev => prev.map(z => {
+        if (s.to && s.to.includes(z.city)) {
+          const boost = { water: 0, food: 0, meds: 0, power: 0 };
+          const r = (s.resource || '').toLowerCase();
+          if (r.includes('water') || r.includes('purif')) boost.water = Math.min(15, 100 - z.resources.water);
+          if (r.includes('food') || r.includes('ration')) boost.food = Math.min(12, 100 - z.resources.food);
+          if (r.includes('med') || r.includes('kit')) boost.meds = Math.min(14, 100 - z.resources.meds);
+          if (r.includes('fuel') || r.includes('power') || r.includes('gen')) boost.power = Math.min(16, 100 - z.resources.power);
+          // small cross-boost
+          const keys = Object.keys(boost);
+          keys.forEach(k => { if (boost[k] === 0) boost[k] = 3; });
+          return {
+            ...z,
+            deployed: z.deployed + 1,
+            resources: {
+              water: Math.min(100, z.resources.water + boost.water),
+              food: Math.min(100, z.resources.food + boost.food),
+              meds: Math.min(100, z.resources.meds + boost.meds),
+              power: Math.min(100, z.resources.power + boost.power),
+            },
+            displaced: Math.max(0, z.displaced - Math.floor(z.displaced * 0.04)),
+          };
+        }
+        return z;
+      }));
+      setTotalDeployed(d => d + 1);
+      showToast('success', `Deployment Authorized: ${s.resource}`, `${s.qty} routing to ${s.to} via confirmed logistics corridor. Zone stats updated.`);
+    }, []);
+
+    const deployAsset = useCallback((form) => {
+      setShowModal(false);
+      const z = zones.find(x => x.id === form.zone);
+      const qty = parseInt(form.quantity) || 1;
+
+      // Update asset inventory
+      setAssets(prev => prev.map(a => {
+        if (a.type === form.assetType || a.name.toLowerCase().includes(form.assetType.toLowerCase())) {
+          return { ...a, deployed: Math.min(a.count, a.deployed + qty) };
+        }
+        return a;
+      }));
+
+      // Update zone stats based on asset type
+      if (z) {
+        setZones(prev => prev.map(zone => {
+          if (zone.id !== z.id) return zone;
+          const boost = {};
+          const t = form.assetType.toLowerCase();
+          if (t.includes('water')) boost.water = Math.min(20, 100 - zone.resources.water);
+          if (t.includes('medical')) boost.meds = Math.min(18, 100 - zone.resources.meds);
+          if (t.includes('field hospital')) { boost.meds = Math.min(22, 100 - zone.resources.meds); boost.power = Math.min(10, 100 - zone.resources.power); }
+          if (t.includes('ground convoy')) boost.food = Math.min(15, 100 - zone.resources.food);
+          if (t.includes('helicopter')) { boost.meds = Math.min(12, 100 - zone.resources.meds); boost.food = Math.min(8, 100 - zone.resources.food); }
+          if (t.includes('emergency response')) { boost.water = Math.min(10, 100 - zone.resources.water); boost.food = Math.min(10, 100 - zone.resources.food); }
+          // Default small boost across all if nothing matched
+          if (Object.keys(boost).length === 0) { boost.water = 5; boost.food = 5; boost.meds = 5; boost.power = 5; }
+          return {
+            ...zone,
+            deployed: zone.deployed + qty,
+            displaced: Math.max(0, zone.displaced - Math.floor(zone.displaced * 0.03 * qty)),
+            resources: {
+              water: Math.min(100, zone.resources.water + (boost.water || 2)),
+              food: Math.min(100, zone.resources.food + (boost.food || 2)),
+              meds: Math.min(100, zone.resources.meds + (boost.meds || 2)),
+              power: Math.min(100, zone.resources.power + (boost.power || 2)),
+            }
+          };
+        }));
+      }
+
+      setTotalDeployed(d => d + qty);
+      showToast('success', 'Asset Deployed', `${form.quantity}× ${form.assetType} dispatched to ${z?.city || form.zone}. Zone resource levels updated.`);
+    }, [zones]);
+
+    const handleZoneClick = (zone) => {
+      setSelectedZone(zone);
+      setShowAIPanel(true);
+      if (activeNav === 'dashboard') setActiveNav('intelligence');
+    };
+
+    const critZones = zones.filter(z => z.priority === 'Critical');
+    const avgKpi = (key) => Math.round(critZones.reduce((s, z) => s + z.resources[key], 0) / critZones.length);
+    const timeStr = currentTime.toUTCString().slice(17, 25);
+
+    return (
+      <div style={{ display: 'flex', height: '100vh', minHeight: 600, background: '#020617', overflow: 'hidden' }}>
+
+        {/* SIDEBAR */}
+        <aside style={{ width: sidebarCollapsed ? 54 : 198, minWidth: sidebarCollapsed ? 54 : 198, background: 'rgba(2,6,23,0.92)', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', transition: 'width 0.3s ease,min-width 0.3s ease', overflow: 'hidden', zIndex: 20, backdropFilter: 'blur(12px)' }}>
+          <div style={{ padding: '14px 10px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: 'linear-gradient(135deg,#ea580c,#9f1239)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>⚡</div>
+              {!sidebarCollapsed && <div><div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.2 }}>ReliefSync</div><div style={{ fontSize: 9, color: '#475569', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AI Crisis Platform</div></div>}
+            </div>
+          </div>
+          <nav style={{ flex: 1, padding: '10px 7px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {NAV_ITEMS.map(item => (
+              <div key={item.id} className={`nav-item ${activeNav === item.id ? 'active' : ''}`}
+                onClick={() => setActiveNav(item.id)}
+                style={{ justifyContent: sidebarCollapsed ? 'center' : 'flex-start', padding: sidebarCollapsed ? '10px' : '10px 13px' }}>
+                <span style={{ fontSize: 15, flexShrink: 0 }}>{item.icon}</span>
+                {!sidebarCollapsed && <span>{item.label}</span>}
+                {!sidebarCollapsed && item.id === 'intelligence' && alerts.length > 0 && (
+                  <span style={{ marginLeft: 'auto', background: '#f43f5e', color: '#fff', borderRadius: '999px', fontSize: 9, fontWeight: 700, padding: '1px 6px' }}>{alerts.length}</span>
+                )}
+              </div>
+            ))}
+          </nav>
+          {!sidebarCollapsed && (
+            <div style={{ padding: '10px 13px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: 10, color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#10b981', animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
+                SYSTEM NOMINAL
+              </div>
+              <div className="mono" style={{ fontSize: 9, color: '#334155', marginTop: 3 }}>{timeStr} UTC</div>
+              {totalDeployed > 0 && (
+                <div style={{ marginTop: 6, fontSize: 10, color: '#38bdf8', fontWeight: 600 }}>
+                  ▶ {totalDeployed} deployed today
+                </div>
+              )}
+            </div>
+          )}
+          <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} style={{ background: 'none', border: 'none', color: '#334155', cursor: 'pointer', padding: '8px', fontSize: 13 }} onMouseEnter={e => e.target.style.color = '#94a3b8'} onMouseLeave={e => e.target.style.color = '#334155'}>
+            {sidebarCollapsed ? '▶' : '◀'}
+          </button>
+        </aside>
+
+        {/* MAIN */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+          {/* Topbar */}
+          <header style={{ padding: '0 18px', height: 50, borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(2,6,23,0.65)', backdropFilter: 'blur(8px)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div className="live-dot" />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#f43f5e', letterSpacing: '0.12em' }}>LIVE OPS</span>
+              </div>
+              <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.1)' }} />
+              <span style={{ fontSize: 11, color: '#475569' }}>Global Humanitarian Crisis Response · {zones.length} active zones · {totalDeployed} deployments</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button className="btn-ghost" style={{ fontSize: 11 }} onClick={() => { setStrategies([]); loadAIStrategies(); showToast('info', 'AI Refreshing', 'Regenerating logistics recommendations from live data...'); }}>
+                ↺ Refresh AI
+              </button>
+              <button className="btn-primary" onClick={() => setShowModal(true)} style={{ fontSize: 12, padding: '6px 14px' }}>+ Deploy Asset</button>
+            </div>
+          </header>
+
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', gap: 0 }}>
+            {/* CENTER */}
+            <div className="scroll-panel" style={{ flex: 1, padding: '14px 16px', overflowY: 'auto', minWidth: 0 }}>
+
+              {/* DASHBOARD */}
+              {activeNav === 'dashboard' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div>
+                      <h1 style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>Executive Dashboard</h1>
+                      <p style={{ fontSize: 11, color: '#475569', marginTop: 1 }}>Aggregated KPIs across {critZones.length} critical zones · Real world map</p>
+                    </div>
+                    <div className="mono" style={{ fontSize: 10, color: '#334155' }}>{currentTime.toDateString()}</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 9, marginBottom: 14 }}>
+                    <KpiCard key={`w-${avgKpi('water')}`} label="Water Supply" value={avgKpi('water')} icon="💧" color="#38bdf8" danger={25} warn={45} unit="% avg" index={0} />
+                    <KpiCard key={`f-${avgKpi('food')}`} label="Food Rations" value={avgKpi('food')} icon="🌾" color="#a3e635" danger={30} warn={50} unit="% avg" index={1} />
+                    <KpiCard key={`m-${avgKpi('meds')}`} label="Medical Kits" value={avgKpi('meds')} icon="💊" color="#f43f5e" danger={25} warn={40} unit="% avg" index={2} />
+                    <KpiCard key={`p-${avgKpi('power')}`} label="Power Capacity" value={avgKpi('power')} icon="⚡" color="#fbbf24" danger={20} warn={40} unit="% avg" index={3} />
+                  </div>
+
+                  {/* REAL LEAFLET MAP */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div className="section-title"><div className="live-dot" />Live World Crisis Map — Click a zone for AI analysis</div>
+                    <div className="real-map-container" style={{ height: 300 }}>
+                      <LeafletMap zones={zones} selectedZone={selectedZone} onZoneClick={handleZoneClick} height={300} mapId="leaflet-map-dash" />
+                      {/* Live overlay badge */}
+                      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 500, display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(2,6,23,0.88)', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(244,63,94,0.3)', backdropFilter: 'blur(4px)' }}>
+                        <div className="live-dot" />
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#f43f5e', letterSpacing: '0.1em' }}>LIVE</span>
+                        <span className="mono" style={{ fontSize: 9, color: '#475569', marginLeft: 3 }}>{timeStr} UTC</span>
+                      </div>
+                      {/* Legend */}
+                      <div style={{ position: 'absolute', bottom: 20, left: 10, zIndex: 500, display: 'flex', gap: 10, background: 'rgba(2,6,23,0.85)', padding: '5px 12px', borderRadius: 6, backdropFilter: 'blur(4px)' }}>
+                        {[['#f43f5e', 'Critical'], ['#ea580c', 'High'], ['#eab308', 'Medium']].map(([c, l]) => (
+                          <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, color: '#94a3b8' }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: c, boxShadow: `0 0 5px ${c}` }} />
+                            {l}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Zone summary + deployments */}
+                  <div className="glass" style={{ borderRadius: 10, padding: '11px 14px', marginBottom: 10 }}>
+                    <div className="section-title" style={{ marginBottom: 8 }}>Active Zone Summary</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                      {[['Critical', '#f43f5e'], ['High', '#ea580c'], ['Medium', '#eab308']].map(([l, c]) => {
+                        const filtered = zones.filter(z => z.priority === l);
+                        const displaced = filtered.reduce((s, z) => s + z.displaced, 0);
+                        return (
+                          <div key={l} style={{ textAlign: 'center', padding: '9px 4px', background: `${c}0d`, borderRadius: 8, border: `1px solid ${c}25` }}>
+                            <div className="mono" style={{ fontSize: 20, fontWeight: 700, color: c }}>{filtered.length}</div>
+                            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{l}</div>
+                            <div style={{ fontSize: 9, color: '#334155', marginTop: 1 }}>{Math.round(displaced / 1000)}k displaced</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Deployment stats */}
+                  {totalDeployed > 0 && (
+                    <div className="glass" style={{ borderRadius: 10, padding: '11px 14px', border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.04)' }}>
+                      <div className="section-title" style={{ marginBottom: 8, color: '#10b981' }}>▶ Deployment Impact (Session)</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, textAlign: 'center' }}>
+                        <div>
+                          <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: '#10b981' }}>{totalDeployed}</div>
+                          <div style={{ fontSize: 10, color: '#475569' }}>Total Deployed</div>
+                        </div>
+                        <div>
+                          <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: '#38bdf8' }}>
+                            {zones.reduce((s, z) => s + z.deployed, 0)}
+                          </div>
+                          <div style={{ fontSize: 10, color: '#475569' }}>Assets Active</div>
+                        </div>
+                        <div>
+                          <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: '#a3e635' }}>
+                            {zones.reduce((s, z) => s + (REAL_CRISIS_ZONES.find(o => o.id === z.id)?.displaced - z.displaced || 0), 0).toLocaleString()}
+                          </div>
+                          <div style={{ fontSize: 10, color: '#475569' }}>People Assisted</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* INTELLIGENCE */}
+              {activeNav === 'intelligence' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div>
+                      <h1 style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>Zone Intelligence</h1>
+                      <p style={{ fontSize: 11, color: '#475569', marginTop: 1 }}>Click any zone on the map or list for real-time AI analysis</p>
+                    </div>
+                    <button className="btn-ghost" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }} onClick={() => { setSelectedZone(null); setShowAIPanel(false); }}>✕ Clear</button>
+                  </div>
+                  {/* REAL MAP — intel */}
+                  <div className="real-map-container" style={{ height: 220, marginBottom: 12 }}>
+                    <LeafletMap zones={zones} selectedZone={selectedZone} onZoneClick={z => { setSelectedZone(z); setShowAIPanel(true); }} height={220} mapId="leaflet-map-intel" />
+                  </div>
+                  <div className="section-title">All Active Crisis Zones</div>
+                  {zones.map(z => (
+                    <ZoneCard key={z.id} zone={z} selected={selectedZone?.id === z.id} onClick={() => { setSelectedZone(z); setShowAIPanel(true); }} />
+                  ))}
+                  {showAIPanel && selectedZone && (
+                    <div className="glass" style={{ borderRadius: 12, marginTop: 12 }}>
+                      <AIAnalysisPanel zone={selectedZone} onClose={() => { setShowAIPanel(false); setSelectedZone(null); }} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* AI STRATEGY */}
+              {activeNav === 'strategy' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                        <h1 style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>AI Strategy Engine</h1>
+                        <div style={{ padding: '2px 7px', background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: 4, fontSize: 9, color: '#38bdf8', fontWeight: 700 }}>LIVE AI</div>
+                      </div>
+                      <p style={{ fontSize: 11, color: '#475569' }}>Real-world logistics recommendations · Claude AI-powered · Stats update on execute</p>
+                    </div>
+                    <button className="btn-ghost" style={{ fontSize: 11 }} onClick={loadAIStrategies}>↺ Regenerate</button>
+                  </div>
+                  <div className="glass" style={{ borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, textAlign: 'center' }}>
+                      {[['Zones Analyzed', zones.length], ['Critical Zones', critZones.length], ['Est. Total Displaced', zones.reduce((s, z) => s + z.displaced, 0).toLocaleString()]].map(([l, v]) => (
+                        <div key={l} style={{ padding: '7px 4px' }}>
+                          <div className="mono stat-flash" style={{ fontSize: 17, fontWeight: 700, color: '#38bdf8' }}>{v}</div>
+                          <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>{l}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="section-title" style={{ marginBottom: 8 }}>
+                    {strategiesLoading ? <><div className="ai-typing"><span /><span /><span /></div> Generating AI recommendations...</> : 'AI-Generated Logistics Orders'}
+                  </div>
+                  {strategies.length > 0 && strategies.map(s => (
+                    <StrategyRow key={s.id} strat={s} onExecute={executeStrategy} />
+                  ))}
+                  {!strategiesLoading && strategies.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '24px', color: '#334155', fontSize: 12 }}>
+                      <div style={{ marginBottom: 8 }}>✦</div>
+                      <div>Click "Regenerate" to load AI recommendations</div>
+                    </div>
+                  )}
+                  <div style={{ marginTop: 16 }}>
+                    <div className="section-title">Zone-Specific AI Analysis</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+                      {zones.filter(z => z.priority === 'Critical').map(z => (
+                        <button key={z.id} className="glass-light" onClick={() => { setSelectedZone(z); setShowAIPanel(true); setActiveNav('intelligence'); }}
+                          style={{ border: `1px solid ${z.color}25`, borderRadius: 9, padding: '10px 12px', cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.2s' }}
+                          onMouseEnter={e => e.currentTarget.style.borderColor = z.color + '60'}
+                          onMouseLeave={e => e.currentTarget.style.borderColor = z.color + '25'}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{z.city}</div>
+                          <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>{z.country} · {z.crisis.slice(0, 38)}...</div>
+                          {z.deployed > 0 && <div style={{ fontSize: 10, color: '#10b981', marginTop: 3 }}>✓ {z.deployed} asset(s) active</div>}
+                          <div style={{ fontSize: 10, color: '#38bdf8', marginTop: 5 }}>✦ Open AI Analysis →</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ASSETS */}
+              {activeNav === 'assets' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div>
+                      <h1 style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>Asset Management</h1>
+                      <p style={{ fontSize: 11, color: '#475569', marginTop: 1 }}>Global relief asset inventory · Updates on each deployment</p>
+                    </div>
+                    <button className="btn-primary" onClick={() => setShowModal(true)}>+ Deploy</button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 9 }}>
+                    {assets.map(a => (
+                      <div key={a.name} className="kpi-card glass-light" style={{ animation: 'fadeInUp 0.4s ease both' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <span style={{ fontSize: 18 }}>{a.icon}</span>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1', marginTop: 5 }}>{a.name}</div>
+                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{a.deployed}/{a.count} deployed</div>
+                          </div>
+                          <span className="mono" style={{ fontSize: 22, fontWeight: 700, color: a.color }}>{a.count - a.deployed}</span>
+                        </div>
+                        <div style={{ fontSize: 9, color: '#334155', marginTop: 4 }}>Available</div>
+                        <div className="progress-bar">
+                          <div style={{ height: '100%', borderRadius: 2, background: `linear-gradient(90deg,${a.color}70,${a.color})`, width: `${Math.round(a.deployed / a.count * 100)}%`, transition: 'width 1.2s ease' }} />
+                        </div>
+                        <button className="btn-ghost" onClick={() => setShowModal(true)} style={{ marginTop: 9, width: '100%', fontSize: 11 }}>Deploy →</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* BRIEFINGS */}
+              {activeNav === 'reports' && (
+                <div>
+                  <h1 style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0', marginBottom: 3 }}>Operational Briefings</h1>
+                  <p style={{ fontSize: 11, color: '#475569', marginBottom: 12 }}>Zone-by-zone situational reports — stats reflect latest deployments</p>
+                  {zones.map(z => (
+                    <div key={z.id} className="glass" style={{ borderRadius: 10, padding: 14, marginBottom: 10, animation: 'fadeInUp 0.35s ease both' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 9 }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3, flexWrap: 'wrap' }}>
+                            <span className={`badge badge-${z.priority.toLowerCase()}`}>{z.priority}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{z.city}, {z.country}</span>
+                            {z.deployed > 0 && <span style={{ fontSize: 9, background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 4, padding: '1px 6px' }}>+{z.deployed} deployed</span>}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#64748b' }}>{z.crisis}</div>
+                        </div>
+                        <WeatherBadge w={z.weather} />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 9 }}>
+                        {[['💧', z.resources.water, '#38bdf8'], ['🌾', z.resources.food, '#a3e635'], ['💊', z.resources.meds, '#f43f5e'], ['⚡', z.resources.power, '#fbbf24']].map(([ic, v, c], i) => (
+                          <div key={i} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.03)', borderRadius: 7, padding: '6px 4px' }}>
+                            <div style={{ fontSize: 13 }}>{ic}</div>
+                            <div className="mono" style={{ fontSize: 14, fontWeight: 700, color: v < 30 ? '#f43f5e' : v < 50 ? '#ea580c' : c }}>{v}%</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>👥 {z.displaced.toLocaleString()} displaced</div>
+                      <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5 }}>Priority Needs</div>
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        {z.needs.map(n => <span key={n} style={{ fontSize: 10, background: 'rgba(234,88,12,0.1)', color: '#fb923c', border: '1px solid rgba(234,88,12,0.25)', borderRadius: 5, padding: '2px 8px' }}>{n}</span>)}
+                      </div>
+                      <button className="btn-ghost" style={{ marginTop: 9, fontSize: 11 }} onClick={() => { setSelectedZone(z); setShowAIPanel(true); setActiveNav('intelligence'); }}>
+                        ✦ View AI Analysis →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT SIDEBAR */}
+            <aside style={{ width: 260, minWidth: 260, borderLeft: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', background: 'rgba(2,6,23,0.5)', backdropFilter: 'blur(6px)', overflow: 'hidden' }}>
+              <div style={{ padding: '11px 13px 9px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div className="live-dot" />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#f43f5e', letterSpacing: '0.1em' }}>LIVE ALERTS</span>
+                  </div>
+                  <span style={{ background: '#f43f5e', color: '#fff', borderRadius: '999px', fontSize: 9, fontWeight: 700, padding: '1px 6px' }}>{alerts.length}</span>
+                </div>
+              </div>
+              <div className="scroll-panel" style={{ flex: 1, padding: '9px', overflowY: 'auto' }}>
+                {alerts.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '28px 14px', color: '#334155' }}><div style={{ fontSize: 20, marginBottom: 6 }}>✓</div><div style={{ fontSize: 11 }}>All clear</div></div>
+                ) : alerts.map(a => <AlertItem key={a.id} alert={a} onResolve={resolveAlert} />)}
+              </div>
+              {/* AI Quick Rec */}
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '9px 11px', flexShrink: 0 }}>
+                <div className="section-title" style={{ marginBottom: 7 }}>AI Quick Action</div>
+                {strategiesLoading ? (
+                  <div style={{ display: 'flex', gap: 5, alignItems: 'center', fontSize: 11, color: '#475569', padding: '8px 0' }}><div className="ai-typing"><span /><span /><span /></div>Generating...</div>
+                ) : strategies.slice(0, 1).map(s => (
+                  <div key={s.id} style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: 8, padding: '9px 11px' }}>
+                    <div style={{ fontSize: 11, color: '#38bdf8', fontWeight: 600, marginBottom: 3 }}>{s.resource}</div>
+                    <div style={{ fontSize: 10, color: '#64748b' }}>→ {s.to}</div>
+                    <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>Qty: <span className="mono" style={{ color: '#e2e8f0' }}>{s.qty}</span></div>
+                    <div style={{ fontSize: 10, color: '#10b981', marginTop: 4 }} className="mono">{s.confidence}% confidence</div>
+                    <button className="btn-primary" style={{ width: '100%', marginTop: 8, fontSize: 11, padding: '6px' }} onClick={() => executeStrategy(s)}>▶ Execute</button>
+                  </div>
+                ))}
+                {/* Worst conditions — live updated */}
+                <div style={{ marginTop: 10 }}>
+                  <div className="section-title" style={{ marginBottom: 6 }}>Worst Conditions</div>
+                  {[...zones].sort((a, b) => Math.min(...Object.values(a.resources)) - Math.min(...Object.values(b.resources))).slice(0, 3).map(z => (
+                    <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
+                      onClick={() => { setSelectedZone(z); setShowAIPanel(true); setActiveNav('intelligence'); }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 500 }}>{z.city}</div>
+                        <div style={{ fontSize: 9, color: '#475569' }}>{z.country}</div>
+                      </div>
+                      <div className="mono" style={{ fontSize: 13, fontWeight: 700, color: z.color }}>{Math.min(...Object.values(z.resources))}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </aside>
+          </div>
+        </main>
+
+        <DeployModal open={showModal} onClose={() => setShowModal(false)} onDeploy={deployAsset} zones={zones} />
+        <Toast toast={toast} onDismiss={() => setToast(null)} />
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
